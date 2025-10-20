@@ -1,13 +1,24 @@
-## Mambler
+```
+.        :    :::.     .        :   :::::::.   :::    .,:::::: :::::::..   
+;;,.    ;;;   ;;`;;    ;;,.    ;;;   ;;;'';;'  ;;;    ;;;;'''' ;;;;``;;;;  
+[[[[, ,[[[[, ,[[ '[[,  [[[[, ,[[[[,  [[[__[[\. [[[     [[cccc   [[[,/[[['  
+$$$$$$$$"$$$c$$$cc$$$c $$$$$$$$"$$$  $$""""Y$$ $$'     $$""""   $$$$$$c    
+888 Y88" 888o888   888,888 Y88" 888o_88o,,od8Po88oo,.__888oo,__ 888b "88bo,
+MMM  M'  "MMMYMM   ""` MMM  M'  "MMM""YUMMMP" """"YUMMM""""YUMMMMMMM   "W" 
+```
 
-`mambler` converts a Markdown document (and any local Markdown files it links to) into an AMB archive ready for distribution on the DOS-era MicroM8 platform.
+`mambler` converts a Markdown document (and any local Markdown files it links to) into an Ancient Machine Book (AMB) ready for distribution.
 
-The project wraps the [md2txt](../md2txt) toolchain, using its Markdown parser and AMA renderer to generate the article content. `mambler` then packs the rendered output into the AMB binary format, handling large documents by automatically splitting them into multiple AMA files with navigational “Continue” links.
+The project wraps the [md2txt](https://github.com/randogoth/md2txt/) toolchain, using its Markdown parser and AMA renderer to generate the article content.
+`mambler` then packs the rendered output into the AMB binary format, handling large documents by automatically splitting them into multiple AMA files with navigational “Continue” links.
 
-### Prerequisites
+### Installation
 
-- [uv](https://docs.astral.sh/uv/) for running the tool and managing dependencies.
-- The sibling `md2txt` project. `pyproject.toml` already points `uv` at `../md2txt`.
+Install the CLI directly from GitHub with [uv](https://github.com/astral-sh/uv): 
+
+```
+uv tool install --from github:randogoth/mambler mambler
+```
 
 ### Usage
 
@@ -25,8 +36,9 @@ uv run mambler.py --title "Your Book Title" --codepage 437 path/to/index.md outp
 ### Development Notes
 
 - Run `uv run python -m compileall mambler.py` to ensure the script still compiles.
-- The `md2txt` dependency is sourced from the sibling directory; edit that project directly when you need parser/renderer changes.
+- The `md2txt` dependency is fetched from GitHub; contribute renderer/parser changes upstream in that project.
 
-### License
+---
 
-This project inherits the licensing terms set by the repository owner; see the root of the repository for details.
+* Directed and vibe coded by Tobias Raayoni Last
+* Programmed by `gpt-5-codex`

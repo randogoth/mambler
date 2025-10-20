@@ -1,7 +1,7 @@
 [project]
 name = "mambler"
 version = "0.1.0"
-description = "Add your description here"
+description = "Converts Markdown into Ancient Machine Book (AMB) format."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -9,4 +9,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-md2txt = { path = "../md2txt" }
+md2txt = { git = "https://github.com/randogoth/md2txt", rev = "main" }
