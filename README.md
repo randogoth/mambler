@@ -17,7 +17,7 @@ The project wraps the [md2txt](https://github.com/randogoth/md2txt/) toolchain, 
 Install the CLI directly from GitHub with [uv](https://github.com/astral-sh/uv):
 
 ```
-uv tool install --from github:randogoth/mambler mambler
+uv tool install --from git+https://github.com/randogoth/mambler/ mambler
 ```
 
 ### Usage
