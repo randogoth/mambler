@@ -5,10 +5,11 @@ import argparse
 import codecs
 import re
 import struct
+import sys
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from md2txt import convert_markdown
 from md2txt.conversion.core import parse_frontmatter
@@ -249,6 +250,114 @@ def _has_high_bit(data: bytes) -> bool:
     return any(byte >= 0x80 for byte in data)
 
 
+def compute_file_offsets(files: List[Tuple[str, bytes]], include_dict: bool) -> Dict[str, int]:
+    total_files = len(files) + (1 if include_dict else 0)
+    offset = 6 + 20 * total_files
+    mapping: Dict[str, int] = {}
+    for name, data in files:
+        mapping[name.upper()] = offset
+        offset += len(data)
+    return mapping
+
+
+def build_dict_index(
+    word_index: Dict[str, set[str]],
+    file_offsets: Dict[str, int],
+    codepage: CodepageInfo,
+) -> Optional[bytes]:
+    bucket_words: Dict[int, Dict[str, Tuple[bytes, List[int]]]] = {}
+    for word, filenames in word_index.items():
+        try:
+            encoded_word = codepage.encode(word)
+        except UnicodeEncodeError:
+            continue
+        length = len(encoded_word)
+        if not (2 <= length <= 17):
+            continue
+        bucket = compute_word_hash(encoded_word)
+        file_ids = sorted({file_offsets[name.upper()] for name in filenames if name.upper() in file_offsets})
+        if not file_ids:
+            continue
+        bucket_map = bucket_words.setdefault(bucket, {})
+        bucket_map[word] = (encoded_word, file_ids)
+
+    if not bucket_words:
+        return None
+
+    lows = bytearray()
+    offsets: List[int] = []
+
+    for bucket in range(256):
+        offsets.append(len(lows))
+        entries = bucket_words.get(bucket)
+        if not entries:
+            lows.extend(struct.pack("<H", 0))
+            continue
+
+        sorted_entries = sorted(entries.items(), key=lambda item: item[0])
+        word_length = len(sorted_entries[0][1][0])
+        lows.extend(struct.pack("<H", len(sorted_entries)))
+        for word, (encoded_word, file_ids) in sorted_entries:
+            if len(encoded_word) != word_length:
+                raise ValueError(f"Inconsistent word length for hash bucket 0x{bucket:02x}.")
+            if len(file_ids) > 255:
+                raise ValueError(f"Word '{word}' appears in more than 255 files, cannot encode index.")
+            lows.extend(encoded_word)
+            lows.append(len(file_ids))
+            for file_id in file_ids:
+                lows.extend(struct.pack("<I", file_id))
+
+    if len(lows) >= 0x10000:
+        raise ValueError("Generated DICT.IDX exceeds 64 KiB limit for word lists.")
+
+    hash_table = bytearray()
+    for offset in offsets:
+        hash_table.extend(struct.pack("<H", offset))
+
+    return bytes(lows + hash_table)
+
+
+def compute_word_hash(encoded_word: bytes) -> int:
+    length = len(encoded_word)
+    checksum = 0
+    for byte in encoded_word:
+        checksum ^= (byte & 0x0F)
+    return ((length - 2) << 4) | (checksum & 0x0F)
+
+
+WORD_MIN_LENGTH = 2
+WORD_MAX_LENGTH = 17
+
+
+def extract_words(lines: List[str]) -> set[str]:
+    words: set[str] = set()
+    for line in lines:
+        stripped = _strip_control_codes(line)
+        buffer: List[str] = []
+        for char in stripped:
+            if char.isalnum():
+                buffer.append(char.lower())
+                continue
+            if len(buffer) >= WORD_MIN_LENGTH:
+                word = "".join(buffer)
+                if WORD_MIN_LENGTH <= len(word) <= WORD_MAX_LENGTH:
+                    words.add(word)
+            buffer = []
+        if len(buffer) >= WORD_MIN_LENGTH:
+            word = "".join(buffer)
+            if WORD_MIN_LENGTH <= len(word) <= WORD_MAX_LENGTH:
+                words.add(word)
+    return words
+
+
+def _strip_control_codes(line: str) -> str:
+    result = line
+    result = re.sub(r"%l[^:]+:", "", result)
+    result = result.replace("%t", "").replace("%!", "").replace("%b", "").replace("%h", "")
+    result = result.replace("%%", "%")
+    return result
+
+
 @dataclass
 class Article:
     source: Path
@@ -287,8 +396,31 @@ def main(argv: Iterable[str] | None = None) -> int:
 
 def build_amb(root_markdown: Path, title: str | None, codepage: CodepageInfo) -> bytes:
     articles = collect_articles(root_markdown)
-    ama_contents = render_articles(articles, codepage)
-    files = assemble_files(ama_contents, title, codepage)
+    ama_contents, word_index = render_articles(articles, codepage)
+    base_files = assemble_files(ama_contents, title, codepage)
+
+    file_offsets = compute_file_offsets(base_files, include_dict=False)
+    try:
+        dict_bytes = build_dict_index(word_index, file_offsets, codepage)
+    except ValueError as exc:
+        print(f"[mambler] Skipping dictionary index: {exc}", file=sys.stderr)
+        dict_bytes = None
+
+    if dict_bytes is None:
+        files = base_files
+    else:
+        adjusted_offsets = compute_file_offsets(base_files, include_dict=True)
+        try:
+            dict_bytes_adjusted = build_dict_index(word_index, adjusted_offsets, codepage)
+        except ValueError as exc:
+            print(f"[mambler] Skipping dictionary index: {exc}", file=sys.stderr)
+            files = base_files
+        else:
+            if dict_bytes_adjusted is None:
+                files = base_files
+            else:
+                files = base_files + [("DICT.IDX", dict_bytes_adjusted)]
+
     return pack_amb(files)
 
 
@@ -351,8 +483,9 @@ def assign_ama_name(stem: str, existing: set[str]) -> str:
     return name
 
 
-def render_articles(articles: Dict[Path, Article], codepage: CodepageInfo) -> Dict[str, List[str]]:
+def render_articles(articles: Dict[Path, Article], codepage: CodepageInfo) -> Tuple[Dict[str, List[str]], Dict[str, set[str]]]:
     rendered: Dict[str, List[str]] = {}
+    word_index: Dict[str, set[str]] = {}
 
     for path, article in articles.items():
         content = path.read_text(encoding="utf-8")
@@ -366,8 +499,20 @@ def render_articles(articles: Dict[Path, Article], codepage: CodepageInfo) -> Di
             renderer_name="ama",
         )
         split_articles = split_article(article.ama_name, ama_lines, codepage)
-        rendered.update(split_articles)
-    return rendered
+        for name, lines in split_articles.items():
+            rendered[name] = lines
+            words = extract_words(lines)
+            if not words:
+                continue
+            word_set = word_index.setdefault(name, set())
+            word_set.update(words)
+
+    inverted_index: Dict[str, set[str]] = {}
+    for filename, words in word_index.items():
+        for word in words:
+            inverted_index.setdefault(word, set()).add(filename)
+
+    return rendered, inverted_index
 
 
 def rewrite_links(markdown: str, base_dir: Path, articles: Dict[Path, Article]) -> str:
@@ -476,13 +621,15 @@ def assemble_files(ama_contents: Dict[str, List[str]], title: str | None, codepa
         files.append(("TITLE", title.encode("ascii", "ignore")[:64]))
 
     high_bit_used = False
+    articles = dict(ama_contents)
 
-    index_bytes = encode_ama("INDEX.AMA", ama_contents.pop("INDEX.AMA"), codepage)
+    index_lines = articles.pop("INDEX.AMA")
+    index_bytes = encode_ama("INDEX.AMA", index_lines, codepage)
     files.append(("INDEX.AMA", index_bytes))
     if _has_high_bit(index_bytes):
         high_bit_used = True
 
-    for name, lines in sorted(ama_contents.items()):
+    for name, lines in sorted(articles.items()):
         data = encode_ama(name, lines, codepage)
         files.append((name, data))
         if not high_bit_used and _has_high_bit(data):

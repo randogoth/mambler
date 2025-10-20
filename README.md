@@ -19,6 +19,7 @@ uv run mambler.py --title "Your Book Title" --codepage 437 path/to/index.md outp
 - `--title` is optional; when provided the value is embedded in the AMB archive header (truncated to 64 ASCII bytes).
 - `--codepage` controls the 8-bit encoding used for every AMA article (default: `437`). Any character that cannot be expressed in the chosen codepage aborts the build with a helpful error so you can pick a better fit.
 - If any emitted byte lives in the 0x80–0xFF range, `mambler` automatically writes a companion `UNICODE.MAP` file describing the high-half character mapping, mirroring the recommendation in the AMA/AMB specification.
+- Words of length 2–17 are indexed into `DICT.IDX` so readers can offer fast full-text search. The index is omitted if it would overflow the 64 KiB LoW data limit mandated by the spec.
 - The command prints the path of the generated AMB file on success.
 
 ### Development Notes
