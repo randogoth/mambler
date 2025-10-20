@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "mambler"
 version = "0.1.0"
@@ -7,6 +11,17 @@ requires-python = ">=3.13"
 dependencies = [
     "md2txt",
 ]
+license = { file = "LICENSE" }
+authors = [{ name = "Tobias Raayoni Last" }]
+
+[project.scripts]
+mambler = "mambler:main"
 
 [tool.uv.sources]
 md2txt = { git = "https://github.com/randogoth/md2txt", rev = "master" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mambler"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/mambler", "README.md", "LICENSE"]

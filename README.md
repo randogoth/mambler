@@ -14,7 +14,7 @@ The project wraps the [md2txt](https://github.com/randogoth/md2txt/) toolchain, 
 
 ### Installation
 
-Install the CLI directly from GitHub with [uv](https://github.com/astral-sh/uv): 
+Install the CLI directly from GitHub with [uv](https://github.com/astral-sh/uv):
 
 ```
 uv tool install --from github:randogoth/mambler mambler
@@ -23,7 +23,7 @@ uv tool install --from github:randogoth/mambler mambler
 ### Usage
 
 ```bash
-uv run mambler.py --title "Your Book Title" --codepage 437 path/to/index.md output.amb
+mambler --title "Your Book Title" --codepage 437 path/to/index.md output.amb
 ```
 
 - `index.md` is the root Markdown file. Any local Markdown links it contains will be followed and bundled automatically.
@@ -35,7 +35,7 @@ uv run mambler.py --title "Your Book Title" --codepage 437 path/to/index.md outp
 
 ### Development Notes
 
-- Run `uv run python -m compileall mambler.py` to ensure the script still compiles.
+- Run `uv run python -m compileall src/mambler` to ensure the package still compiles.
 - The `md2txt` dependency is fetched from GitHub; contribute renderer/parser changes upstream in that project.
 
 ---

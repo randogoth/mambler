@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+"""Core package for converting Markdown to Ancient Machine Book archives."""
+
 from __future__ import annotations
 
 import argparse
