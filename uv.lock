@@ -11,21 +11,15 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "md2txt", directory = "../md2txt" }]
+requires-dist = [{ name = "md2txt", git = "https://github.com/randogoth/md2txt?rev=master" }]
 
 [[package]]
 name = "md2txt"
 version = "0.1.0"
-source = { directory = "../md2txt" }
+source = { git = "https://github.com/randogoth/md2txt?rev=master#403034d462bd0b98d3896571aa15e8d404659099" }
 dependencies = [
     { name = "pyfiglet" },
     { name = "pyphen" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pyfiglet", specifier = ">=0.8.0" },
-    { name = "pyphen", specifier = ">=0.17.2" },
 ]
 
 [[package]]

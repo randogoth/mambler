@@ -9,4 +9,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-md2txt = { git = "https://github.com/randogoth/md2txt", rev = "main" }
+md2txt = { git = "https://github.com/randogoth/md2txt", rev = "master" }
