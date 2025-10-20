@@ -1,0 +1,12 @@
+[project]
+name = "mambler"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "md2txt",
+]
+
+[tool.uv.sources]
+md2txt = { path = "../md2txt" }
