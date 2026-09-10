@@ -1,4 +1,4 @@
-Repository moved to [codeberg.org/randogoth/mambler.git](https://codeberg.org/randogoth/mambler.git)
+Repository moved to [code.randogoth.com/randogoth/mambler.git](https://code.randogoth.com/randogoth/mambler.git)
 
 ```
 .        :    :::.     .        :   :::::::.   :::    .,:::::: :::::::..   
